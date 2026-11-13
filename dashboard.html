@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Your Field — Agri Nexus</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:16px;}
+  .topbar h1{font-size:1.3rem; margin:0;}
+  .topbar h1 span{color:var(--accent);}
+  .topbar button{width:auto; padding:10px 14px; font-size:0.9rem; margin:0;}
+  .big-status{display:flex; align-items:center; gap:14px; padding:14px; border-radius:14px; margin-bottom:10px; font-size:1.15rem; font-weight:700;}
+  .big-status.ok{background:#1f3d2a; color:var(--accent);}
+  .big-status.warn{background:#3d3214; color:var(--accent2);}
+  .big-status.bad{background:#3d1f1f; color:var(--danger);}
+  .big-status .icon{font-size:2rem;}
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;}
+  .stat{background:var(--panel2); border-radius:12px; padding:14px; text-align:center;}
+  .stat .val{font-size:1.5rem; font-weight:800; color:var(--accent);}
+  .stat .lbl{font-size:0.85rem; color:var(--muted); margin-top:2px;}
+  .crop-list{display:flex; flex-direction:column; gap:10px; margin-top:10px;}
+  .crop{background:var(--panel2); border-radius:12px; padding:14px; border-left:5px solid var(--accent); display:flex; gap:12px; align-items:flex-start;}
+  .crop .emoji{font-size:1.8rem;}
+  .crop h4{margin:0 0 4px; color:var(--accent2); font-size:1.1rem;}
+  .crop p{margin:0; font-size:0.95rem; color:var(--text);}
+  .photo{width:100%; border-radius:12px; margin-top:10px; display:block;}
+  .alert-banner{background:#3d1f1f; color:#ffb4b4; padding:12px 14px; border-radius:12px; font-weight:700; margin-bottom:12px;}
+  ul.actions{margin:0; padding-left:0; list-style:none;}
+  ul.actions li{background:var(--panel2); padding:12px 14px; border-radius:10px; margin-bottom:8px; font-size:1rem;}
+  #loading{text-align:center; padding:60px 16px; color:var(--muted); font-size:1.1rem;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🌾 Agri<span>Nexus</span></h1>
+  <button class="ghost" id="backBtn">⬅ New Field</button>
+</div>
+
+<div class="wrap">
+
+  <div id="loading">🛰️ Reading satellite data for your field…</div>
+
+  <div id="results" class="hidden">
+    <div id="alertBanner"></div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">💧 Your Field Right Now</h3>
+      <div id="bigStatus"></div>
+      <div class="stat-grid" id="statGrid"></div>
+
+      <div style="margin-top:14px;">
+        <p class="muted" style="margin:0 0 4px;">Soil wetness — last 30 days</p>
+        <div id="moistChart"></div>
+      </div>
+      <div style="margin-top:10px;">
+        <p class="muted" style="margin:0 0 4px;">Rainfall — last 30 days</p>
+        <div id="precipChart"></div>
+      </div>
+
+      <img id="satPhoto" class="photo hidden" alt="Satellite view of field">
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">🌱 What To Plant</h3>
+      <p class="muted" id="rotationNote"></p>
+      <div class="crop-list" id="cropList"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">✅ What To Do Now</h3>
+      <ul class="actions" id="actionList"></ul>
+    </div>
+  </div>
+
+  <div id="errorBox" class="hidden card">
+    <p>Could not fetch data right now. Check your internet and try again.</p>
+    <button id="retryBtn" class="secondary">Try Again</button>
+  </div>
+
+</div>
+
+<footer>Data from NASA POWER &amp; NASA Open APIs (api.nasa.gov) — Built for NASA Space Apps Challenge 2026, "Field Shift: Adapting Farms with NASA Data"</footer>
+
+<script src="app.js"></script>
+<script>
+document.getElementById('backBtn').onclick = () => window.location.href = 'index.html';
+document.getElementById('retryBtn').onclick = () => runDashboard();
+
+const field = JSON.parse(localStorage.getItem('agrinexus_field') || 'null');
+if (!field) {
+  window.location.href = 'index.html';
+}
+
+async function runDashboard() {
+  document.getElementById('loading').classList.remove('hidden');
+  document.getElementById('results').classList.add('hidden');
+  document.getElementById('errorBox').classList.add('hidden');
+  try {
+    const d = await fetchFieldData(field.lat, field.lon);
+    renderResults(d);
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('results').classList.remove('hidden');
+    fetchEvents(field.lat, field.lon).then(ev => {
+      if (ev) document.getElementById('alertBanner').innerHTML = `<div class="alert-banner">⚠️ NASA has spotted a nearby event: ${ev.title}</div>`;
+    });
+    const img = document.getElementById('satPhoto');
+    img.onload = () => img.classList.remove('hidden');
+    img.onerror = () => img.classList.add('hidden');
+    img.src = satPhotoUrl(field.lat, field.lon);
+  } catch (e) {
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('errorBox').classList.remove('hidden');
+  }
+}
+
+function renderResults(d) {
+  const risks = analyzeRisks(d);
+  const bigStatus = document.getElementById('bigStatus');
+  if (risks.droughtRisk) {
+    bigStatus.innerHTML = `<div class="big-status bad"><span class="icon">🏜️</span>Your soil is DRY — plant drought-tough crops</div>`;
+  } else if (risks.waterlogRisk) {
+    bigStatus.innerHTML = `<div class="big-status warn"><span class="icon">🌊</span>Soil is VERY WET — watch for flooding</div>`;
+  } else {
+    bigStatus.innerHTML = `<div class="big-status ok"><span class="icon">✅</span>Soil moisture looks GOOD for planting</div>`;
+  }
+  if (risks.heatStress) {
+    const banner = document.createElement('div');
+    banner.className = 'big-status bad';
+    banner.innerHTML = '<span class="icon">🔥</span>Hot temperatures — crops may need extra water/shade';
+    bigStatus.appendChild(banner);
+  }
+
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat"><div class="val">${d.avgTemp.toFixed(0)}°C</div><div class="lbl">Temperature</div></div>
+    <div class="stat"><div class="val">${d.avgPrecip.toFixed(1)}mm</div><div class="lbl">Daily Rain (avg)</div></div>
+    <div class="stat"><div class="val">${(d.avgRootMoist*100).toFixed(0)}%</div><div class="lbl">Soil Wetness (deep)</div></div>
+    <div class="stat"><div class="val">${(d.avgHumidity).toFixed(0)}%</div><div class="lbl">Humidity</div></div>
+  `;
+
+  document.getElementById('moistChart').innerHTML = sparklineSVG(d.moistSeries, '#7ed957', 1);
+  document.getElementById('precipChart').innerHTML = sparklineSVG(d.precipSeries, '#6ec6ff');
+
+  const {top, lastFamily} = pickCrops(risks, field.lastCrop);
+  document.getElementById('rotationNote').textContent = lastFamily
+    ? `You grew ${field.lastCrop} last time. Based on that and your field's water level, try:`
+    : `Based on your field's water level right now, good choices are:`;
+  document.getElementById('cropList').innerHTML = top.map(([k,c]) => `
+    <div class="crop"><div class="emoji">${c.emoji}</div><div><h4>${c.name}</h4><p>${c.note}</p></div></div>
+  `).join('');
+
+  document.getElementById('actionList').innerHTML = buildActions(risks, lastFamily).map(a => `<li>${a}</li>`).join('');
+}
+
+runDashboard();
+</script>
+</body>
+</html>

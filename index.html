@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Agri Nexus — Know Your Field</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .hero{text-align:center; padding:34px 16px 16px;}
+  .hero h1{margin:0; font-size:2rem;}
+  .hero h1 span{color:var(--accent);}
+  .hero p{color:var(--muted); margin:8px 0 0; font-size:1.05rem;}
+  .pitch{display:flex; flex-direction:column; gap:10px; margin:18px 0 6px;}
+  .pitch-item{display:flex; gap:12px; align-items:center; background:var(--panel2); border-radius:12px; padding:12px 14px;}
+  .pitch-item .emoji{font-size:1.6rem;}
+  .pitch-item p{margin:0; font-size:0.95rem;}
+  .field{margin-bottom:12px;}
+</style>
+</head>
+<body>
+<div class="hero">
+  <h1>🌾 Agri<span>Nexus</span></h1>
+  <p>Know your field. Plant smarter.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="pitch">
+    <div class="pitch-item"><span class="emoji">🛰️</span><p>Checks your soil moisture using NASA satellites — no sensors needed.</p></div>
+    <div class="pitch-item"><span class="emoji">🌱</span><p>Tells you what to plant next, based on your real field conditions.</p></div>
+    <div class="pitch-item"><span class="emoji">📱</span><p>Free, works on your phone, no account needed.</p></div>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label><span class="step-num">1</span>Where is your field?</label>
+      <button id="useLoc" class="secondary">📍 Use My Location (easiest)</button>
+    </div>
+    <div class="field">
+      <label>Or type coordinates</label>
+      <div style="display:flex; gap:8px;">
+        <input type="number" id="lat" step="0.0001" placeholder="Latitude">
+        <input type="number" id="lon" step="0.0001" placeholder="Longitude">
+      </div>
+    </div>
+    <div class="field">
+      <label><span class="step-num">2</span>What did you grow last season?</label>
+      <select id="lastCrop">
+        <option value="none">Nothing / first time planting</option>
+        <option value="maize">Maize (corn)</option>
+        <option value="rice">Rice</option>
+        <option value="cassava">Cassava</option>
+        <option value="legume">Beans / Groundnut / Cowpea</option>
+        <option value="vegetable">Tomato / Pepper / Okra</option>
+        <option value="sorghum">Sorghum / Millet</option>
+      </select>
+    </div>
+    <button id="go"><span class="step-num">3</span>Check My Field</button>
+    <div id="status" class="muted" style="text-align:center; min-height:20px; padding-top:8px;"></div>
+  </div>
+
+</div>
+
+<footer>Data from NASA POWER &amp; NASA Open APIs (api.nasa.gov) — Built for NASA Space Apps Challenge 2026, "Field Shift: Adapting Farms with NASA Data"</footer>
+
+<script>
+const statusEl = document.getElementById('status');
+
+document.getElementById('useLoc').onclick = () => {
+  if (!navigator.geolocation) { statusEl.textContent = 'Location not available — type it in below.'; return; }
+  statusEl.textContent = 'Finding your field…';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById('lat').value = pos.coords.latitude.toFixed(4);
+      document.getElementById('lon').value = pos.coords.longitude.toFixed(4);
+      statusEl.textContent = '✓ Got it. Now tap "Check My Field".';
+    },
+    () => { statusEl.textContent = 'Could not get location — type coordinates above.'; }
+  );
+};
+
+document.getElementById('go').onclick = () => {
+  const lat = parseFloat(document.getElementById('lat').value);
+  const lon = parseFloat(document.getElementById('lon').value);
+  if (isNaN(lat) || isNaN(lon)) { statusEl.textContent = 'Please set your location first.'; return; }
+  const lastCrop = document.getElementById('lastCrop').value;
+  localStorage.setItem('agrinexus_field', JSON.stringify({lat, lon, lastCrop}));
+  window.location.href = 'dashboard.html';
+};
+</script>
+</body>
+</html>
