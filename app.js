@@ -1,5 +1,4 @@
-const NASA_KEY = 'DEMO_KEY'; // swap for a free key from api.nasa.gov if it rate-limits
-
+const NASA_KEY = 'mPKmwKWJBc96g6B76FbHb7HKNMKNmKbm8rNHCw6G';
 const CROPS = {
   maize:    {name:'Maize', emoji:'🌽', family:'cereal', water:'medium', note:'Needs steady water. Good choice right now.'},
   rice:     {name:'Rice', emoji:'🌾', family:'cereal', water:'high', note:'Needs lots of water — best when field stays wet.'},
