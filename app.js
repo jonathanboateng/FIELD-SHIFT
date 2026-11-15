@@ -67,23 +67,32 @@ function lineChartWithLabels(values, color, fmt, maxOverride) {
   `;
 }
 
-function barChartSVG(values, color) {
+function barChartSVG(values, color, dates = []) {
   const clean = values.map((v,i) => ({v, i})).filter(p => p.v !== null && p.v !== undefined);
   if (clean.length < 2) return '<p class="muted">Not enough data for a trend yet.</p>';
-  const w = 300, h = 80, pad = 6;
+  
+  const w = 300, h = 90, pad = 6;
   const max = Math.max(...clean.map(p => p.v), 0.001);
   const gap = (w - pad*2) / values.length;
   const barW = gap * 0.65;
+  
   const bars = clean.map(p => {
     const x = pad + p.i * gap + (gap - barW)/2;
-    const barH = Math.max(2, (p.v / max) * (h - pad*2));
-    const y = h - pad - barH;
-    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="1.5" fill="${color}"/>`;
+    const barH = Math.max(2, (p.v / max) * (h - pad*2 - 12));
+    const y = h - pad - 12 - barH;
+    
+    let dateLabel = '';
+    if (dates[p.i] && (p.i % 5 === 0 || p.i === clean.length - 1)) {
+      dateLabel = `<text x="${(x + barW/2).toFixed(1)}" y="${h - 2}" font-size="8" fill="#9cc9a8" text-anchor="middle">${dates[p.i]}</text>`;
+    }
+    
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="1.5" fill="${color}"/>${dateLabel}`;
   }).join('');
+
   return `<svg viewBox="0 0 ${w} ${h}" style="width:100%; height:${h}px;">${bars}</svg>`;
 }
 
-function barChartWithLabels(values, color, fmt) {
+function barChartWithLabels(values, color, fmt, dates) {
   const s = chartStats(values);
   return `
     <div class="chart-labels">
@@ -91,7 +100,7 @@ function barChartWithLabels(values, color, fmt) {
       <span class="chart-labels-now">Now ${fmt(s.current)}</span>
       <span>Max ${fmt(s.max)}</span>
     </div>
-    ${barChartSVG(values, color)}
+    ${barChartSVG(values, color, dates)}
   `;
 }
 

@@ -80,7 +80,6 @@
       <div class="crop-list" id="cropList"></div>
     </div>
 
-    <!-- Added missing action list container -->
     <div class="card">
       <h3 style="margin-top:0;">💡 Recommended Actions</h3>
       <ul class="actions" id="actionList"></ul>
@@ -159,7 +158,7 @@ function renderResults(d) {
 
   document.getElementById('moistChart').innerHTML = lineChartWithLabels(d.moistSeries, '#7ed957', v => (v*100).toFixed(0)+'%', 1);
   document.getElementById('historyBody').innerHTML = buildHistoryRows(d.dates, d.moistSeries, d.precipSeries);
-  document.getElementById('precipChart').innerHTML = barChartWithLabels(d.precipSeries, '#6ec6ff', v => v.toFixed(1)+'mm');
+  document.getElementById('precipChart').innerHTML = barChartWithLabels(d.precipSeries, '#6ec6ff', v => v.toFixed(1)+'mm', d.dates);
 
   const {top, lastFamily} = pickCrops(risks, field.lastCrop);
   document.getElementById('rotationNote').textContent = lastFamily
