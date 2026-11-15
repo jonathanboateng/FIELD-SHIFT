@@ -63,11 +63,16 @@
       <img id="gibsPhoto" class="photo hidden" alt="MODIS satellite view (NASA GIBS)">
     </div>
 
+  
     <div class="card">
-      <h3 style="margin-top:0;">🌱 What To Plant</h3>
-      <p class="muted" id="rotationNote"></p>
-      <div class="crop-list" id="cropList"></div>
-    </div>
+      <h3 style="margin-top:0;">📜 History — Last 30 Days</h3>
+      <div class="history-wrap">
+        <table class="history-table">
+          <thead><tr><th>Date</th><th>Soil Wetness</th><th>Rainfall</th></tr></thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </div> 
 
     <div class="card">
       <h3 style="margin-top:0;">✅ What To Do Now</h3>
