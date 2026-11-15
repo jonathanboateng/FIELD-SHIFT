@@ -117,6 +117,7 @@ async function runDashboard() {
   } catch (e) {
     document.getElementById('loading').classList.add('hidden');
     document.getElementById('errorBox').classList.remove('hidden');
+    console.error('AgriNexus error:', e);
   }
 }
 
@@ -163,6 +164,7 @@ runDashboard();
 </script>
 </body>
 </html>
+
 
 
 
