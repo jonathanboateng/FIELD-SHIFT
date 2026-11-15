@@ -1,177 +1,242 @@
-﻿<!DOCTYPE html>
+﻿const CROPS = {
+  maize:    {name:'Maize', emoji:'🌽', family:'cereal', water:'medium', note:'Needs steady water. Good choice right now.'},
+  rice:     {name:'Rice', emoji:'🌾', family:'cereal', water:'high', note:'Needs lots of water — best when field stays wet.'},
+  cassava:  {name:'Cassava', emoji:'🍠', family:'root', water:'low', note:'Tough crop, survives dry spells well.'},
+  sorghum:  {name:'Sorghum / Millet', emoji:'🌾', family:'cereal', water:'low', note:'Handles heat and dry soil well.'},
+  cowpea:   {name:'Cowpea (beans)', emoji:'🫘', family:'legume', water:'low', note:'Feeds the soil for your next crop.'},
+  groundnut:{name:'Groundnut', emoji:'🥜', family:'legume', water:'medium', note:'Good for resting the soil.'},
+  okra:     {name:'Okra', emoji:'🫛', family:'vegetable', water:'medium', note:'Grows fast, moderate water needed.'},
+  tomato:   {name:'Tomato', emoji:'🍅', family:'vegetable', water:'high', note:'Needs regular watering, avoid if dry.'},
+  pepper:   {name:'Pepper', emoji:'🌶️', family:'vegetable', water:'medium', note:"Moderate water, don't overwater."},
+  soybean:  {name:'Soybean', emoji:'🫛', family:'legume', water:'medium', note:'Good partner after maize or rice.'}
+};
+const LAST_FAMILY = {none:null, maize:'cereal', rice:'cereal', cassava:'root', legume:'legume', vegetable:'vegetable', sorghum:'cereal'};
+
+async function fetchFieldData(lat, lon) {
+  const end = new Date();
+  const start = new Date(end.getTime() - 30*24*3600*1000);
+  
+  const formatDate = d => d.toISOString().split('.')[0] + 'Z';
+  const startStr = formatDate(start);
+  const endStr = formatDate(end);
+  const resolution = 'P1D'; // Daily resolution
+
+  // Meteomatics high-resolution parameters
+  const parameters = 't_2m:C,precip_1h:mm,soil_moisture_0_10cm:m3m3';
+  const url = `https://api.meteomatics.com/${startStr}--${endStr}:${resolution}/${parameters}/${lat},${lon}/json`;
+
+  // Meteomatics HTTP Basic Authentication credentials
+  const username = 'YOUR_METEOMATICS_USERNAME';
+  const password = 'YOUR_METEOMATICS_PASSWORD';
+  const credentials = btoa(`${username}:${password}`);
+
+  const res = await fetch(url, {
+    headers: {
+      'Authorization': `Basic ${credentials}`
+    }
+  });
+
+  if (!res.ok) throw new Error('Meteomatics weather data unavailable');
+  const data = await res.json();
+
+  const findParam = id => data.data.find(d => d.param === id)?.coordinates[0]?.dates || [];
+  const tempData = findParam('t_2m:C');
+  const precipData = findParam('precip_1h:mm');
+  const soilData = findParam('soil_moisture_0_10cm:m3m3');
+
+  const extractValues = arr => arr.map(item => item.value);
+  const extractDates = arr => arr.map(item => {
+    const d = new Date(item.date);
+    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  });
+
+  const moistSeries = extractValues(soilData);
+  const precipSeries = extractValues(precipData);
+  const tempSeries = extractValues(tempData);
+  const dates = extractDates(tempData);
+
+  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+
+  return {
+    avgTemp: avg(tempSeries), 
+    avgPrecip: avg(precipSeries),
+    avgRootMoist: avg(moistSeries), 
+    avgTopMoist: avg(moistSeries), 
+    avgHumidity: 70,
+    moistSeries, 
+    precipSeries,
+    dates
+  };
+}
+
+function chartStats(values) {
+  const clean = values.filter(v => v !== null && v !== undefined);
+  return { min: Math.min(...clean), max: Math.max(...clean), current: clean[clean.length-1] };
+}
+
+function sparklineSVG(values, color, maxOverride) {
+  const clean = values.map((v,i) => ({v, i})).filter(p => p.v !== null && p.v !== undefined);
+  if (clean.length < 2) return '<p class="muted">Not enough data for a trend yet.</p>';
+  const w = 300, h = 80, pad = 6;
+  const max = maxOverride || Math.max(...clean.map(p => p.v));
+  const min = Math.min(0, ...clean.map(p
+git add .
+git commit -m "Integrate Meteomatics API weather and soil parameters into AgriNexus"
+git push origin main
+
+@'
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Your Field — Agri Nexus</title>
-<link rel="stylesheet" href="style.css">
-<style>
-  .topbar{display:flex; align-items:center; justify-content:space-between; padding:16px;}
-  .topbar h1{font-size:1.3rem; margin:0;}
-  .topbar h1 span{color:var(--accent);}
-  .topbar button{width:auto; padding:10px 14px; font-size:0.9rem; margin:0;}
-  .big-status{display:flex; align-items:center; gap:14px; padding:14px; border-radius:14px; margin-bottom:10px; font-size:1.15rem; font-weight:700;}
-  .big-status.ok{background:#1f3d2a; color:var(--accent);}
-  .big-status.warn{background:#3d3214; color:var(--accent2);}
-  .big-status.bad{background:#3d1f1f; color:var(--danger);}
-  .big-status .icon{font-size:2rem;}
-  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;}
-  .stat{background:var(--panel2); border-radius:12px; padding:14px; text-align:center;}
-  .stat .val{font-size:1.5rem; font-weight:800; color:var(--accent);}
-  .stat .lbl{font-size:0.85rem; color:var(--muted); margin-top:2px;}
-  .crop-list{display:flex; flex-direction:column; gap:10px; margin-top:10px;}
-  .crop{background:var(--panel2); border-radius:12px; padding:14px; border-left:5px solid var(--accent); display:flex; gap:12px; align-items:flex-start;}
-  .crop .emoji{font-size:1.8rem;}
-  .crop h4{margin:0 0 4px; color:var(--accent2); font-size:1.1rem;}
-  .crop p{margin:0; font-size:0.95rem; color:var(--text);}
-  .photo{width:100%; border-radius:12px; margin-top:10px; display:block;}
-  .alert-banner{background:#3d1f1f; color:#ffb4b4; padding:12px 14px; border-radius:12px; font-weight:700; margin-bottom:12px;}
-  ul.actions{margin:0; padding-left:0; list-style:none;}
-  ul.actions li{background:var(--panel2); padding:12px 14px; border-radius:10px; margin-bottom:8px; font-size:1rem;}
-  #loading{text-align:center; padding:60px 16px; color:var(--muted); font-size:1.1rem;}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgriNexus - Field Dashboard</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="container">
+    <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <div>
+        <h1 style="margin:0; font-size:1.5rem;">🌾 AgriNexus Dashboard</h1>
+        <p class="muted" id="fieldSubtitle">High-resolution field monitoring & intelligence</p>
+      </div>
+      <a href="index.html" class="btn" style="text-decoration:none; font-size:0.9rem; padding:6px 12px; background:var(--panel2); border-radius:8px;">← Back to Map</a>
+    </header>
 
-<div class="topbar">
-  <h1>🌾 Agri<span>Nexus</span></h1>
-  <button class="ghost" id="backBtn">⬅ New Field</button>
-</div>
+    <div id="bigStatus"></div>
 
-<div class="wrap">
+    <div class="card-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-bottom:20px;" id="statGrid"></div>
 
-  <div id="loading">🛰️ Reading satellite data for your field…</div>
-
-  <div id="results" class="hidden">
-    <div id="alertBanner"></div>
-
-    <div class="card">
-      <h3 style="margin-top:0;">💧 Your Field Right Now</h3>
-      <div id="bigStatus"></div>
-      <div class="stat-grid" id="statGrid"></div>
-
-      <div style="margin-top:14px;">
-        <p class="muted" style="margin:0 0 4px;">Soil wetness — last 30 days</p>
+    <div class="card" style="margin-bottom:20px;">
+      <h3 style="margin-top:0;">🌧️ Soil Wetness & Rainfall Trends</h3>
+      <p class="muted">Recent root-zone moisture and daily precipitation patterns.</p>
+      <div style="margin-top:15px;">
+        <h4 style="margin:0 0 5px; font-size:0.9rem; color:var(--accent);">Root Zone Soil Wetness</h4>
         <div id="moistChart"></div>
       </div>
-      <div style="margin-top:10px;">
-        <p class="muted" style="margin:0 0 4px;">Rainfall — last 30 days</p>
+      <div style="margin-top:20px;">
+        <h4 style="margin:0 0 5px; font-size:0.9rem; color:#6ec6ff;">Daily Precipitation (mm)</h4>
         <div id="precipChart"></div>
       </div>
-
-      <img id="satPhoto" class="photo hidden" alt="Satellite view of field">
-      <img id="gibsPhoto" class="photo hidden" alt="MODIS satellite view (NASA GIBS)">
     </div>
 
-  
-    <div class="card">
-      <h3 style="margin-top:0;">📜 History — Last 30 Days</h3>
-      <div class="history-wrap">
-        <table class="history-table">
-          <thead><tr><th>Date</th><th>Soil Wetness</th><th>Rainfall</th></tr></thead>
-          <tbody id="historyBody"></tbody>
-        </table>
-      </div>
-    </div> 
-
-    <div class="card">
+    <div class="card" style="margin-bottom:20px;">
       <h3 style="margin-top:0;">🌱 What To Plant</h3>
       <p class="muted" id="rotationNote"></p>
+      
+      <!-- Search Bar -->
+      <input type="text" id="cropSearch" placeholder="🔍 Search any crop (e.g., maize, tomato)..." 
+             style="width:100%; box-sizing:border-box; padding:10px 14px; margin-bottom:12px; background:var(--panel2); border:1px solid rgba(255,255,255,0.15); border-radius:10px; color:var(--text); font-size:0.95rem;">
+      
       <div class="crop-list" id="cropList"></div>
     </div>
 
     <div class="card">
-      <h3 style="margin-top:0;">💡 Recommended Actions</h3>
-      <ul class="actions" id="actionList"></ul>
+      <h3 style="margin-top:0;">💡 Recommended Field Actions</h3>
+      <ul id="actionList" style="margin:0; padding-left:20px; line-height:1.6;"></ul>
     </div>
   </div>
 
-  <div id="errorBox" class="hidden card">
-    <p>Could not fetch data right now. Check your internet and try again.</p>
-    <button id="retryBtn" class="secondary">Try Again</button>
-  </div>
+  <script src="app.js"></script>
+  <script>
+    let field = null;
+    let currentRisks = null;
+    let currentLastFamily = null;
 
-</div>
+    window.addEventListener('DOMContentLoaded', async () => {
+      const stored = localStorage.getItem('agrinexus_active_field');
+      if (!stored) {
+        window.location.href = 'index.html';
+        return;
+      }
+      field = JSON.parse(stored);
+      document.getElementById('fieldSubtitle').textContent = `${field.name} (${field.lat.toFixed(2)}°, ${field.lon.toFixed(2)}°)`;
 
-<footer>Data from NASA POWER &amp; NASA Open APIs (api.nasa.gov) — Built for NASA Space Apps Challenge 2026, "Field Shift: Adapting Farms with NASA Data"</footer>
+      try {
+        const data = await fetchFieldData(field.lat, field.lon);
+        renderResults(data);
+      } catch (err) {
+        console.error(err);
+        document.getElementById('bigStatus').innerHTML = `<div class="big-status bad"><span class="icon">⚠️</span>Failed to load field data. Please check your API credentials.</div>`;
+      }
 
-<script src="app.js"></script>
-<script>
-document.getElementById('backBtn').onclick = () => window.location.href = 'index.html';
-document.getElementById('retryBtn').onclick = () => runDashboard();
-
-const field = JSON.parse(localStorage.getItem('agrinexus_field') || 'null');
-if (!field) {
-  window.location.href = 'index.html';
-}
-
-async function runDashboard() {
-  document.getElementById('loading').classList.remove('hidden');
-  document.getElementById('results').classList.add('hidden');
-  document.getElementById('errorBox').classList.add('hidden');
-  try {
-    const d = await fetchFieldData(field.lat, field.lon);
-    renderResults(d);
-    document.getElementById('loading').classList.add('hidden');
-    document.getElementById('results').classList.remove('hidden');
-    fetchEvents(field.lat, field.lon).then(ev => {
-      if (ev) document.getElementById('alertBanner').innerHTML = `<div class="alert-banner">⚠️ NASA has spotted a nearby event: ${ev.title}</div>`;
+      // Hook up search input listener
+      const searchInput = document.getElementById('cropSearch');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => displayCrops(e.target.value));
+      }
     });
-    const img = document.getElementById('satPhoto');
-    img.onload = () => img.classList.remove('hidden');
-    img.onerror = () => img.classList.add('hidden');
-    img.src = satPhotoUrl(field.lat, field.lon);
-    const gibsImg = document.getElementById('gibsPhoto');
-    gibsImg.onload = () => gibsImg.classList.remove('hidden');
-    gibsImg.onerror = () => gibsImg.classList.add('hidden');
-    gibsImg.src = gibsTileUrl(field.lat, field.lon);
-  } catch (e) {
-    document.getElementById('loading').classList.add('hidden');
-    document.getElementById('errorBox').classList.remove('hidden');
-    console.error('AgriNexus error:', e);
-  }
-}
 
-function renderResults(d) {
-  const risks = analyzeRisks(d);
-  const bigStatus = document.getElementById('bigStatus');
-  if (risks.droughtRisk) {
-    bigStatus.innerHTML = `<div class="big-status bad"><span class="icon">🏜️</span>Your soil is DRY — plant drought-tough crops</div>`;
-  } else if (risks.waterlogRisk) {
-    bigStatus.innerHTML = `<div class="big-status warn"><span class="icon">🌊</span>Soil is VERY WET — watch for flooding</div>`;
-  } else {
-    bigStatus.innerHTML = `<div class="big-status ok"><span class="icon">✅</span>Soil moisture looks GOOD for planting</div>`;
-  }
-  if (risks.heatStress) {
-    const banner = document.createElement('div');
-    banner.className = 'big-status bad';
-    banner.innerHTML = '<span class="icon">🔥</span>Hot temperatures — crops may need extra water/shade';
-    bigStatus.appendChild(banner);
-  }
+    function renderResults(d) {
+      currentRisks = analyzeRisks(d);
+      const bigStatus = document.getElementById('bigStatus');
+      if (currentRisks.droughtRisk) {
+        bigStatus.innerHTML = `<div class="big-status bad"><span class="icon">🏜️</span>Your soil is DRY — plant drought-tough crops</div>`;
+      } else if (currentRisks.waterlogRisk) {
+        bigStatus.innerHTML = `<div class="big-status warn"><span class="icon">🌊</span>Soil is VERY WET — watch for flooding</div>`;
+      } else {
+        bigStatus.innerHTML = `<div class="big-status ok"><span class="icon">✅</span>Soil moisture looks GOOD for planting</div>`;
+      }
+      if (currentRisks.heatStress) {
+        const banner = document.createElement('div');
+        banner.className = 'big-status bad';
+        banner.innerHTML = '<span class="icon">🔥</span>Hot temperatures — crops may need extra water/shade';
+        bigStatus.appendChild(banner);
+      }
 
-  document.getElementById('statGrid').innerHTML = `
-    <div class="stat"><div class="val">${d.avgTemp.toFixed(0)}°C</div><div class="lbl">Temperature</div></div>
-    <div class="stat"><div class="val">${d.avgPrecip.toFixed(1)}mm</div><div class="lbl">Daily Rain (avg)</div></div>
-    <div class="stat"><div class="val">${(d.avgRootMoist*100).toFixed(0)}%</div><div class="lbl">Soil Wetness (deep)</div></div>
-    <div class="stat"><div class="val">${(d.avgHumidity).toFixed(0)}%</div><div class="lbl">Humidity</div></div>
-  `;
+      document.getElementById('statGrid').innerHTML = `
+        <div class="stat"><div class="val">${d.avgTemp.toFixed(0)}°C</div><div class="lbl">Temperature</div></div>
+        <div class="stat"><div class="val">${d.avgPrecip.toFixed(1)}mm</div><div class="lbl">Daily Rain (avg)</div></div>
+        <div class="stat"><div class="val">${(d.avgRootMoist*100).toFixed(0)}%</div><div class="lbl">Soil Wetness (deep)</div></div>
+        <div class="stat"><div class="val">${(d.avgHumidity).toFixed(0)}%</div><div class="lbl">Humidity</div></div>
+      `;
 
-  document.getElementById('moistChart').innerHTML = lineChartWithLabels(d.moistSeries, '#7ed957', v => (v*100).toFixed(0)+'%', 1);
-  document.getElementById('historyBody').innerHTML = buildHistoryRows(d.dates, d.moistSeries, d.precipSeries);
-  document.getElementById('precipChart').innerHTML = barChartWithLabels(d.precipSeries, '#6ec6ff', v => v.toFixed(1)+'mm', d.dates);
+      document.getElementById('moistChart').innerHTML = lineChartWithLabels(d.moistSeries, '#7ed957', v => (v*100).toFixed(0)+'%', 1);
+      document.getElementById('precipChart').innerHTML = barChartWithLabels(d.precipSeries, '#6ec6ff', v => v.toFixed(1)+'mm', d.dates);
 
-  const {top, lastFamily} = pickCrops(risks, field.lastCrop);
-  document.getElementById('rotationNote').textContent = lastFamily
-    ? `You grew ${field.lastCrop} last time. Based on that and your field's water level, try:`
-    : `Based on your field's water level right now, good choices are:`;
-  document.getElementById('cropList').innerHTML = top.map(([k,c]) => `
-    <div class="crop"><div class="emoji">${c.emoji}</div><div><h4>${c.name}</h4><p>${c.note}</p></div></div>
-  `).join('');
+      currentLastFamily = LAST_FAMILY[field.lastCrop];
+      document.getElementById('rotationNote').textContent = currentLastFamily
+        ? `You grew ${field.lastCrop} last time. Search any crop below to check suitability:`
+        : `Search any crop below to check suitability for your current soil conditions:`;
 
-  document.getElementById('actionList').innerHTML = buildActions(risks, lastFamily).map(a => `<li>${a}</li>`).join('');
-}
+      displayCrops('');
+      document.getElementById('actionList').innerHTML = buildActions(currentRisks, currentLastFamily).map(a => `<li>${a}</li>`).join('');
+    }
 
-runDashboard();
-</script>
+    function displayCrops(query = '') {
+      const q = query.toLowerCase().trim();
+      const filtered = Object.entries(CROPS).filter(([k, c]) => 
+        c.name.toLowerCase().includes(q) || c.family.toLowerCase().includes(q) || c.note.toLowerCase().includes(q)
+      );
+
+      const container = document.getElementById('cropList');
+      if (filtered.length === 0) {
+        container.innerHTML = `<p class="muted" style="text-align:center; padding:10px;">No matching crops found.</p>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(([k, c]) => {
+        let warningBadge = '';
+        if (currentRisks && currentRisks.droughtRisk && c.water === 'high') {
+          warningBadge = `<span style="display:inline-block; font-size:0.75rem; background:#3d1f1f; color:#ffb4b4; padding:2px 8px; border-radius:6px; margin-top:4px;">⚠️ High water need (Soil is dry)</span>`;
+        } else if (currentRisks && currentRisks.waterlogRisk && c.water === 'low') {
+          warningBadge = `<span style="display:inline-block; font-size:0.75rem; background:#3d3214; color:var(--accent2); padding:2px 8px; border-radius:6px; margin-top:4px;">⚠️ Prefers drier soil</span>`;
+        } else {
+          warningBadge = `<span style="display:inline-block; font-size:0.75rem; background:#1f3d2a; color:var(--accent); padding:2px 8px; border-radius:6px; margin-top:4px;">✅ Good fit for conditions</span>`;
+        }
+
+        return `
+          <div class="crop" style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--panel2); border-radius:10px; margin-bottom:10px;">
+            <div class="emoji" style="font-size:1.8rem;">${c.emoji}</div>
+            <div style="flex:1;">
+              <h4 style="margin:0 0 2px; color:var(--text);">${c.name}</h4>
+              <p style="margin:0; font-size:0.9rem; color:var(--muted);">${c.note}</p>
+              ${warningBadge}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  </script>
 </body>
 </html>
