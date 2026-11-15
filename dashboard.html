@@ -60,6 +60,7 @@
       </div>
 
       <img id="satPhoto" class="photo hidden" alt="Satellite view of field">
+      <img id="gibsPhoto" class="photo hidden" alt="MODIS satellite view (NASA GIBS)">
     </div>
 
     <div class="card">
@@ -109,6 +110,10 @@ async function runDashboard() {
     img.onload = () => img.classList.remove('hidden');
     img.onerror = () => img.classList.add('hidden');
     img.src = satPhotoUrl(field.lat, field.lon);
+    const gibsImg = document.getElementById('gibsPhoto');
+    gibsImg.onload = () => gibsImg.classList.remove('hidden');
+    gibsImg.onerror = () => gibsImg.classList.add('hidden');
+    gibsImg.src = gibsTileUrl(field.lat, field.lon);
   } catch (e) {
     document.getElementById('loading').classList.add('hidden');
     document.getElementById('errorBox').classList.remove('hidden');
@@ -158,5 +163,7 @@ runDashboard();
 </script>
 </body>
 </html>
+
+
 
 

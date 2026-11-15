@@ -169,3 +169,22 @@ function buildActions(risks, lastFamily) {
   actions.push('Check this app again in 1-2 weeks — the data updates daily.');
   return actions;
 }
+
+function dateForGibs(daysAgo = 2) {
+  const d = new Date(Date.now() - daysAgo * 86400000);
+  return d.toISOString().slice(0, 10);
+}
+
+function latLonToTile(lat, lon, zoom) {
+  const latRad = lat * Math.PI / 180;
+  const n = Math.pow(2, zoom);
+  const x = Math.floor((lon + 180) / 360 * n);
+  const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+  return { x, y, z: zoom };
+}
+
+function gibsTileUrl(lat, lon, zoom = 7, dateStr) {
+  const { x, y, z } = latLonToTile(lat, lon, zoom);
+  return getGibsTileTemplate(dateStr || dateForGibs())
+    .replace('{z}', z).replace('{y}', y).replace('{x}', x);
+}
