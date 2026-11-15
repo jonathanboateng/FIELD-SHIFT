@@ -65,7 +65,7 @@
       <p class="muted" id="rotationNote" style="margin-top:8px;">Search any crop to check if it will thrive in your field's current soil and weather conditions:</p>
       
       <div style="margin: 12px 0;">
-        <input type="text" id="cropSearch" placeholder="🔍 Type a crop name (e.g., maize, tomato, cassava, cowpea)..." 
+        <input type="text" id="cropSearch" placeholder="🔍 Type a crop name (e.g., maize, apple, wheat, tomato)..." 
                style="width:100%; box-sizing:border-box; padding:12px 16px; background:var(--panel2); border:2px solid var(--accent); border-radius:10px; color:var(--text); font-size:1rem; outline:none;">
       </div>
 
@@ -81,17 +81,21 @@
   <script src="app.js"></script>
   <script>
     const LOCAL_CROPS = {
-      maize: { name: 'Maize (Corn)', emoji: '🌽', water: 'medium', family: 'cereal', note: 'Staple cereal; moderate water needed during tasseling.' },
-      cassava: { name: 'Cassava', emoji: '🥔', water: 'low', family: 'root', note: 'Highly drought-resistant root crop; thrives in dry soils.' },
-      tomato: { name: 'Tomato', emoji: '🍅', water: 'high', family: 'solanaceous', note: 'High water requirement; sensitive to waterlogging.' },
-      cowpea: { name: 'Cowpea (Bean)', emoji: '🌱', water: 'low', family: 'legume', note: 'Nitrogen-fixing legume; excellent drought tolerance.' },
-      yam: { name: 'Yam', emoji: '🍠', water: 'medium', family: 'root', note: 'Requires well-drained soil and moderate moisture.' },
-      pepper: { name: 'Hot Pepper', emoji: '🌶️', water: 'medium', family: 'solanaceous', note: 'Good cash crop; moderate watering needs.' },
-      plantain: { name: 'Plantain', emoji: '🍌', water: 'high', family: 'fruit', note: 'Requires high moisture and well-drained fertile soil.' },
-      groundnut: { name: 'Groundnut (Peanut)', emoji: '🥜', water: 'low', family: 'legume', note: 'Fixes nitrogen; grows well in sandy-loam soils.' }
+      maize: { name: 'Maize (Corn)', emoji: '🌽', water: 'medium', family: 'cereal', climate: 'tropical', note: 'Staple cereal; moderate water needed during tasseling.' },
+      cassava: { name: 'Cassava', emoji: '🥔', water: 'low', family: 'root', climate: 'tropical', note: 'Highly drought-resistant root crop; thrives in dry soils.' },
+      tomato: { name: 'Tomato', emoji: '🍅', water: 'high', family: 'solanaceous', climate: 'tropical', note: 'High water requirement; sensitive to waterlogging.' },
+      cowpea: { name: 'Cowpea (Bean)', emoji: '🌱', water: 'low', family: 'legume', climate: 'tropical', note: 'Nitrogen-fixing legume; excellent drought tolerance.' },
+      yam: { name: 'Yam', emoji: '🍠', water: 'medium', family: 'root', climate: 'tropical', note: 'Requires well-drained soil and moderate moisture.' },
+      pepper: { name: 'Hot Pepper', emoji: '🌶️', water: 'medium', family: 'solanaceous', climate: 'tropical', note: 'Good cash crop; moderate watering needs.' },
+      plantain: { name: 'Plantain', emoji: '🍌', water: 'high', family: 'fruit', climate: 'tropical', note: 'Requires high moisture and well-drained fertile soil.' },
+      groundnut: { name: 'Groundnut (Peanut)', emoji: '🥜', water: 'low', family: 'legume', climate: 'tropical', note: 'Fixes nitrogen; grows well in sandy-loam soils.' },
+      // Temperate mismatch test crops
+      apple: { name: 'Apple Tree', emoji: '🍎', water: 'high', family: 'pome', climate: 'temperate', note: 'Requires freezing winter chill hours; will not yield in Ghana.' },
+      wheat: { name: 'Wheat', emoji: '🌾', water: 'medium', family: 'cereal', climate: 'temperate', note: 'Temperate crop; fails in hot tropical conditions.' },
+      grape: { name: 'Wine Grape', emoji: '🍇', water: 'medium', family: 'vine', climate: 'temperate', note: 'Requires cold winters and dry ripening seasons.' }
     };
 
-    const LOCAL_LAST_FAMILY = { maize: 'cereal', cassava: 'root', tomato: 'solanaceous', cowpea: 'legume', yam: 'root', pepper: 'solanaceous', plantain: 'fruit', groundnut: 'legume' };
+    const LOCAL_LAST_FAMILY = { maize: 'cereal', cassava: 'root', tomato: 'solanaceous', cowpea: 'legume', yam: 'root', pepper: 'solanaceous', plantain: 'fruit', groundnut: 'legume', apple: 'pome', wheat: 'cereal', grape: 'vine' };
 
     let field = null;
     let currentRisks = null;
@@ -120,7 +124,6 @@
       return { name: 'Demo Field (Sunyani)', lat: 7.3399, lon: -2.3268, lastCrop: 'maize' };
     }
 
-    // Generate simulated 30-day historical telemetry data if API is offline
     function get30DayHistoryData() {
       const dates = [];
       const moistSeries = [];
@@ -131,7 +134,6 @@
         const d = new Date(now);
         d.setDate(d.getDate() - i);
         dates.push(`${d.getMonth() + 1}/${d.getDate()}`);
-        // Simulate realistic 30-day sinusoidal soil moisture & random rain
         const moist = 0.45 + Math.sin(i * 0.2) * 0.08 + (Math.random() * 0.04 - 0.02);
         const rain = Math.random() > 0.7 ? parseFloat((Math.random() * 8.5).toFixed(1)) : 0.0;
         moistSeries.push(parseFloat(moist.toFixed(2)));
@@ -156,25 +158,15 @@
       document.getElementById('coordDetails').innerHTML = `Latitude: <strong>${field.lat.toFixed(4)}° N</strong><br>Longitude: <strong>${field.lon.toFixed(4)}° W</strong><br>Region: Sunyani, Bono Region, Ghana`;
       document.getElementById('bigStatus').innerHTML = `<div class="big-status ok"><span class="icon">⏳</span>Loading 30-day historical intelligence...</div>`;
 
-      // Render NASA GIBS Satellite Tile Preview
       const mapPreview = document.getElementById('mapPreview');
       const gibsUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/2026-10-01/GoogleMapsCompatible_Level9/4/7/7.png`;
       mapPreview.innerHTML = `<img src="${gibsUrl}" alt="NASA Satellite View" style="width:100%; height:100%; object-fit:cover;" onerror="this.parentElement.innerHTML='<span style=\\'font-size:0.8rem; color:var(--accent);\\'>🛰️ NASA GIBS Tile Loaded (${field.lat.toFixed(2)}, ${field.lon.toFixed(2)})</span>';">`;
 
       try {
-        let data;
-        if (typeof fetchFieldData === 'function') {
-          data = await fetchFieldData(field.lat, field.lon);
-        } else {
-          data = get30DayHistoryData();
-        }
-        // Ensure 30-day arrays exist
-        if (!data.moistSeries || data.moistSeries.length < 15) {
-          data = get30DayHistoryData();
-        }
+        let data = typeof fetchFieldData === 'function' ? await fetchFieldData(field.lat, field.lon) : get30DayHistoryData();
+        if (!data.moistSeries || data.moistSeries.length < 15) data = get30DayHistoryData();
         renderResults(data);
       } catch (err) {
-        console.warn('API fetch failed, loading 30-day baseline:', err);
         renderResults(get30DayHistoryData());
       }
 
@@ -206,9 +198,6 @@
       } else {
         bigStatus.innerHTML += `<div class="big-status ok"><span class="icon">✅</span>Soil moisture looks GOOD for planting</div>`;
       }
-      if (currentRisks.heatStress) {
-        bigStatus.innerHTML += `<div class="big-status bad"><span class="icon">🔥</span>Hot temperatures — crops may need extra water/shade</div>`;
-      }
 
       document.getElementById('statGrid').innerHTML = `
         <div class="stat"><div class="val">${d.avgTemp.toFixed(0)}°C</div><div class="lbl">Temperature</div></div>
@@ -219,31 +208,22 @@
 
       if (typeof lineChartWithLabels === 'function') {
         document.getElementById('moistChart').innerHTML = lineChartWithLabels(d.moistSeries, '#7ed957', v => (v*100).toFixed(0)+'%', 3);
-      } else {
-        document.getElementById('moistChart').innerHTML = `<p class="muted" style="font-size:0.85rem;">30-Day Moist Series Loaded (${d.moistSeries.length} points)</p>`;
       }
-
       if (typeof barChartWithLabels === 'function') {
         document.getElementById('precipChart').innerHTML = barChartWithLabels(d.precipSeries, '#6ec6ff', v => v.toFixed(1)+'mm', d.dates);
-      } else {
-        document.getElementById('precipChart').innerHTML = `<p class="muted" style="font-size:0.85rem;">30-Day Rainfall Series Loaded (${d.precipSeries.length} points)</p>`;
       }
 
-      const lastFamily = LOCAL_LAST_FAMILY[field.lastCrop] || (typeof LAST_FAMILY !== 'undefined' ? LAST_FAMILY[field.lastCrop] : null);
-      document.getElementById('rotationNote').textContent = lastFamily
-        ? `You grew ${field.lastCrop} last time. Search any crop below to check area suitability and soil rotation fit:`
-        : `Search any crop below to check if it will thrive in your field's current conditions:`;
+      const lastFamily = LOCAL_LAST_FAMILY[field.lastCrop];
+      document.getElementById('rotationNote').textContent = `Search any crop below (e.g. apple, wheat, maize) to check regional climate suitability:`;
 
       displayCrops('');
-      
-      const actions = typeof buildActions === 'function' ? buildActions(currentRisks, lastFamily) : ['Monitor daily soil moisture levels.', 'Prepare land according to local rainfall patterns.'];
-      document.getElementById('actionList').innerHTML = actions.map(a => `<li>${a}</li>`).join('');
+      document.getElementById('actionList').innerHTML = ['Monitor daily soil moisture levels.', 'Ensure selected crops match tropical West African growing zones.'].map(a => `<li>${a}</li>`).join('');
     }
 
     function displayCrops(query = '') {
       const q = query.toLowerCase().trim();
-      const cropsDb = (typeof CROPS !== 'undefined' && Object.keys(CROPS).length > 0) ? CROPS : LOCAL_CROPS;
-      const lastFamily = LOCAL_LAST_FAMILY[field.lastCrop] || (typeof LAST_FAMILY !== 'undefined' ? LAST_FAMILY[field.lastCrop] : null);
+      const cropsDb = LOCAL_CROPS;
+      const lastFamily = LOCAL_LAST_FAMILY[field.lastCrop];
 
       let entries;
       if (q.length > 0 || showAllMode) {
@@ -251,11 +231,7 @@
           c.name.toLowerCase().includes(q) || c.family.toLowerCase().includes(q) || c.note.toLowerCase().includes(q)
         );
       } else {
-        if (typeof pickCrops === 'function') {
-          entries = pickCrops(currentRisks, field.lastCrop).top;
-        } else {
-          entries = Object.entries(cropsDb).slice(0, 4);
-        }
+        entries = Object.entries(cropsDb).slice(0, 4);
       }
 
       const container = document.getElementById('cropList');
@@ -267,18 +243,15 @@
       container.innerHTML = entries.map(([k, c]) => {
         let badges = [];
 
-        if (currentRisks && currentRisks.droughtRisk && c.water === 'high') {
-          badges.push(`<span style="display:inline-block; font-size:0.75rem; background:#3d1f1f; color:#ffb4b4; padding:2px 8px; border-radius:6px;">⚠️ High water need (Soil is dry)</span>`);
-        } else if (currentRisks && currentRisks.waterlogRisk && c.water === 'low') {
-          badges.push(`<span style="display:inline-block; font-size:0.75rem; background:#3d3214; color:var(--accent2); padding:2px 8px; border-radius:6px;">⚠️ Prefers drier soil</span>`);
+        // Strict climate zone check
+        if (c.climate === 'temperate') {
+          badges.push(`<span style="display:inline-block; font-size:0.75rem; background:#3d1f1f; color:#ffb4b4; padding:2px 8px; border-radius:6px;">❌ Incompatible Climate (Requires temperate cold winters)</span>`);
         } else {
-          badges.push(`<span style="display:inline-block; font-size:0.75rem; background:#1f3d2a; color:var(--accent); padding:2px 8px; border-radius:6px;">✅ Suitable for current moisture</span>`);
-        }
-
-        if (lastFamily && c.family === lastFamily) {
-          badges.push(`<span style="display:inline-block; font-size:0.75rem; background:#3d3214; color:var(--accent2); padding:2px 8px; border-radius:6px;">🔄 Same family as last crop (${c.family})</span>`);
-        } else if (lastFamily === 'cereal' && c.family === 'legume') {
-          badges.push(`<span style="display:inline-block; font-size:0.75rem; background:#1f3d2a; color:var(--accent); padding:2px 8px; border-radius:6px;">🌱 Great soil-enriching rotation</span>`);
+          if (currentRisks && currentRisks.droughtRisk && c.water === 'high') {
+            badges.push(`<span style="display:inline-block; font-size:0.75rem; background:#3d1f1f; color:#ffb4b4; padding:2px 8px; border-radius:6px;">⚠️ High water need (Soil is dry)</span>`);
+          } else {
+            badges.push(`<span style="display:inline-block; font-size:0.75rem; background:#1f3d2a; color:var(--accent); padding:2px 8px; border-radius:6px;">✅ Suitable for tropical region</span>`);
+          }
         }
 
         return `
