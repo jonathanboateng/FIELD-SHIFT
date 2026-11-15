@@ -139,8 +139,9 @@ function renderResults(d) {
     <div class="stat"><div class="val">${(d.avgHumidity).toFixed(0)}%</div><div class="lbl">Humidity</div></div>
   `;
 
-  document.getElementById('moistChart').innerHTML = sparklineSVG(d.moistSeries, '#7ed957', 1);
-  document.getElementById('precipChart').innerHTML = sparklineSVG(d.precipSeries, '#6ec6ff');
+  document.getElementById('moistChart').innerHTML = lineChartWithLabels(d.moistSeries, '#7ed957', v => (v*100).toFixed(0)+'%', 1);
+  document.getElementById('historyBody').innerHTML = buildHistoryRows(d.dates, d.moistSeries, d.precipSeries);
+  document.getElementById('precipChart').innerHTML = barChartWithLabels(d.precipSeries, '#6ec6ff', v => v.toFixed(1)+'mm');
 
   const {top, lastFamily} = pickCrops(risks, field.lastCrop);
   document.getElementById('rotationNote').textContent = lastFamily
@@ -157,3 +158,5 @@ runDashboard();
 </script>
 </body>
 </html>
+
+

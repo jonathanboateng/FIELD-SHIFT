@@ -1,15 +1,16 @@
 const NASA_KEY = 'mPKmwKWJBc96g6B76FbHb7HKNMKNmKbm8rNHCw6G';
+
 const CROPS = {
-  maize:    {name:'Maize', emoji:'🌽', family:'cereal', water:'medium', note:'Needs steady water. Good choice right now.'},
-  rice:     {name:'Rice', emoji:'🌾', family:'cereal', water:'high', note:'Needs lots of water — best when field stays wet.'},
-  cassava:  {name:'Cassava', emoji:'🍠', family:'root', water:'low', note:'Tough crop, survives dry spells well.'},
-  sorghum:  {name:'Sorghum / Millet', emoji:'🌾', family:'cereal', water:'low', note:'Handles heat and dry soil well.'},
-  cowpea:   {name:'Cowpea (beans)', emoji:'🫘', family:'legume', water:'low', note:'Feeds the soil for your next crop.'},
-  groundnut:{name:'Groundnut', emoji:'🥜', family:'legume', water:'medium', note:'Good for resting the soil.'},
-  okra:     {name:'Okra', emoji:'🫛', family:'vegetable', water:'medium', note:'Grows fast, moderate water needed.'},
-  tomato:   {name:'Tomato', emoji:'🍅', family:'vegetable', water:'high', note:'Needs regular watering, avoid if dry.'},
-  pepper:   {name:'Pepper', emoji:'🌶️', family:'vegetable', water:'medium', note:"Moderate water, don't overwater."},
-  soybean:  {name:'Soybean', emoji:'🫛', family:'legume', water:'medium', note:'Good partner after maize or rice.'}
+  maize:    {name:'Maize', emoji:'??', family:'cereal', water:'medium', note:'Needs steady water. Good choice right now.'},
+  rice:     {name:'Rice', emoji:'??', family:'cereal', water:'high', note:'Needs lots of water � best when field stays wet.'},
+  cassava:  {name:'Cassava', emoji:'??', family:'root', water:'low', note:'Tough crop, survives dry spells well.'},
+  sorghum:  {name:'Sorghum / Millet', emoji:'??', family:'cereal', water:'low', note:'Handles heat and dry soil well.'},
+  cowpea:   {name:'Cowpea (beans)', emoji:'??', family:'legume', water:'low', note:'Feeds the soil for your next crop.'},
+  groundnut:{name:'Groundnut', emoji:'??', family:'legume', water:'medium', note:'Good for resting the soil.'},
+  okra:     {name:'Okra', emoji:'??', family:'vegetable', water:'medium', note:'Grows fast, moderate water needed.'},
+  tomato:   {name:'Tomato', emoji:'??', family:'vegetable', water:'high', note:'Needs regular watering, avoid if dry.'},
+  pepper:   {name:'Pepper', emoji:'???', family:'vegetable', water:'medium', note:"Moderate water, don't overwater."},
+  soybean:  {name:'Soybean', emoji:'??', family:'legume', water:'medium', note:'Good partner after maize or rice.'}
 };
 const LAST_FAMILY = {none:null, maize:'cereal', rice:'cereal', cassava:'root', legume:'legume', vegetable:'vegetable', sorghum:'cereal'};
 
@@ -25,14 +26,20 @@ async function fetchFieldData(lat, lon) {
   const p = data.properties.parameter;
   const avg = arr => { const v = Object.values(arr).filter(x => x > -900); return v.reduce((a,b)=>a+b,0)/v.length; };
   const series = arr => Object.values(arr).map(x => x > -900 ? x : null);
+  const dates = Object.keys(p.GWETROOT).map(d => `${d.slice(4,6)}/${d.slice(6,8)}`);
   return {
     avgTemp: avg(p.T2M), avgPrecip: avg(p.PRECTOTCORR),
     avgRootMoist: avg(p.GWETROOT), avgTopMoist: avg(p.GWETTOP), avgHumidity: avg(p.RH2M),
-    moistSeries: series(p.GWETROOT), precipSeries: series(p.PRECTOTCORR)
+    moistSeries: series(p.GWETROOT), precipSeries: series(p.PRECTOTCORR),
+    dates
   };
 }
 
-// Builds a tiny self-contained SVG line chart. values: array of numbers (nulls skipped), color: stroke hex.
+function chartStats(values) {
+  const clean = values.filter(v => v !== null && v !== undefined);
+  return { min: Math.min(...clean), max: Math.max(...clean), current: clean[clean.length-1] };
+}
+
 function sparklineSVG(values, color, maxOverride) {
   const clean = values.map((v,i) => ({v, i})).filter(p => p.v !== null && p.v !== undefined);
   if (clean.length < 2) return '<p class="muted">Not enough data for a trend yet.</p>';
@@ -46,6 +53,59 @@ function sparklineSVG(values, color, maxOverride) {
   return `<svg viewBox="0 0 ${w} ${h}" style="width:100%; height:${h}px;">
     <path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
+}
+
+function lineChartWithLabels(values, color, fmt, maxOverride) {
+  const s = chartStats(values);
+  return `
+    <div class="chart-labels">
+      <span>Min ${fmt(s.min)}</span>
+      <span class="chart-labels-now">Now ${fmt(s.current)}</span>
+      <span>Max ${fmt(s.max)}</span>
+    </div>
+    ${sparklineSVG(values, color, maxOverride)}
+  `;
+}
+
+function barChartSVG(values, color) {
+  const clean = values.map((v,i) => ({v, i})).filter(p => p.v !== null && p.v !== undefined);
+  if (clean.length < 2) return '<p class="muted">Not enough data for a trend yet.</p>';
+  const w = 300, h = 80, pad = 6;
+  const max = Math.max(...clean.map(p => p.v), 0.001);
+  const gap = (w - pad*2) / values.length;
+  const barW = gap * 0.65;
+  const bars = clean.map(p => {
+    const x = pad + p.i * gap + (gap - barW)/2;
+    const barH = Math.max(2, (p.v / max) * (h - pad*2));
+    const y = h - pad - barH;
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="1.5" fill="${color}"/>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%; height:${h}px;">${bars}</svg>`;
+}
+
+function barChartWithLabels(values, color, fmt) {
+  const s = chartStats(values);
+  return `
+    <div class="chart-labels">
+      <span>Min ${fmt(s.min)}</span>
+      <span class="chart-labels-now">Now ${fmt(s.current)}</span>
+      <span>Max ${fmt(s.max)}</span>
+    </div>
+    ${barChartSVG(values, color)}
+  `;
+}
+
+function buildHistoryRows(dates, moistSeries, precipSeries) {
+  const rows = dates.map((date, i) => ({
+    date, moist: moistSeries[i], precip: precipSeries[i]
+  })).reverse();
+  return rows.map(r => `
+    <tr>
+      <td>${r.date}</td>
+      <td>${r.moist !== null ? (r.moist*100).toFixed(0)+'%' : '�'}</td>
+      <td>${r.precip !== null ? r.precip.toFixed(1)+'mm' : '�'}</td>
+    </tr>
+  `).join('');
 }
 
 async function fetchEvents(lat, lon) {
@@ -106,6 +166,6 @@ function buildActions(risks, lastFamily) {
   }
   if (risks.heatStress) actions.push('Plant early morning or late evening to protect young plants from heat.');
   if (lastFamily === 'cereal') actions.push('Plant beans or groundnut to feed the soil before your next maize/rice crop.');
-  actions.push('Check this app again in 1-2 weeks — the data updates daily.');
+  actions.push('Check this app again in 1-2 weeks � the data updates daily.');
   return actions;
 }

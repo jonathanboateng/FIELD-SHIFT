@@ -21,3 +21,10 @@ button:disabled{opacity:0.5;}
 footer{text-align:center; color:var(--muted); font-size:0.8rem; padding:20px;}
 .step-num{display:inline-block; background:var(--accent); color:#0e1a12; width:24px; height:24px; border-radius:50%;
   text-align:center; line-height:24px; font-weight:800; margin-right:8px; font-size:0.9rem;}
+
+.chart-labels{display:flex; justify-content:space-between; font-size:0.8rem; color:var(--muted); margin-bottom:4px;}
+.chart-labels-now{color:var(--accent); font-weight:700;}
+.history-wrap{max-height:280px; overflow-y:auto; margin-top:8px;}
+.history-table{width:100%; border-collapse:collapse; font-size:0.9rem;}
+.history-table th{text-align:left; color:var(--muted); font-weight:600; padding:8px 6px; position:sticky; top:0; background:var(--panel); font-size:0.8rem;}
+.history-table td{padding:8px 6px; border-top:1px solid var(--border);}
