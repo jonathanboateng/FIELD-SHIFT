@@ -1,16 +1,16 @@
-const NASA_KEY = 'mPKmwKWJBc96g6B76FbHb7HKNMKNmKbm8rNHCw6G';
+﻿const NASA_KEY = 'mPKmwKWJBc96g6B76FbHb7HKNMKNmKbm8rNHCw6G';
 
 const CROPS = {
-  maize:    {name:'Maize', emoji:'??', family:'cereal', water:'medium', note:'Needs steady water. Good choice right now.'},
-  rice:     {name:'Rice', emoji:'??', family:'cereal', water:'high', note:'Needs lots of water � best when field stays wet.'},
-  cassava:  {name:'Cassava', emoji:'??', family:'root', water:'low', note:'Tough crop, survives dry spells well.'},
-  sorghum:  {name:'Sorghum / Millet', emoji:'??', family:'cereal', water:'low', note:'Handles heat and dry soil well.'},
-  cowpea:   {name:'Cowpea (beans)', emoji:'??', family:'legume', water:'low', note:'Feeds the soil for your next crop.'},
-  groundnut:{name:'Groundnut', emoji:'??', family:'legume', water:'medium', note:'Good for resting the soil.'},
-  okra:     {name:'Okra', emoji:'??', family:'vegetable', water:'medium', note:'Grows fast, moderate water needed.'},
-  tomato:   {name:'Tomato', emoji:'??', family:'vegetable', water:'high', note:'Needs regular watering, avoid if dry.'},
-  pepper:   {name:'Pepper', emoji:'???', family:'vegetable', water:'medium', note:"Moderate water, don't overwater."},
-  soybean:  {name:'Soybean', emoji:'??', family:'legume', water:'medium', note:'Good partner after maize or rice.'}
+  maize:    {name:'Maize', emoji:'🌽', family:'cereal', water:'medium', note:'Needs steady water. Good choice right now.'},
+  rice:     {name:'Rice', emoji:'🌾', family:'cereal', water:'high', note:'Needs lots of water — best when field stays wet.'},
+  cassava:  {name:'Cassava', emoji:'🍠', family:'root', water:'low', note:'Tough crop, survives dry spells well.'},
+  sorghum:  {name:'Sorghum / Millet', emoji:'🌾', family:'cereal', water:'low', note:'Handles heat and dry soil well.'},
+  cowpea:   {name:'Cowpea (beans)', emoji:'🫘', family:'legume', water:'low', note:'Feeds the soil for your next crop.'},
+  groundnut:{name:'Groundnut', emoji:'🥜', family:'legume', water:'medium', note:'Good for resting the soil.'},
+  okra:     {name:'Okra', emoji:'🫛', family:'vegetable', water:'medium', note:'Grows fast, moderate water needed.'},
+  tomato:   {name:'Tomato', emoji:'🍅', family:'vegetable', water:'high', note:'Needs regular watering, avoid if dry.'},
+  pepper:   {name:'Pepper', emoji:'🌶️', family:'vegetable', water:'medium', note:"Moderate water, don't overwater."},
+  soybean:  {name:'Soybean', emoji:'🫛', family:'legume', water:'medium', note:'Good partner after maize or rice.'}
 };
 const LAST_FAMILY = {none:null, maize:'cereal', rice:'cereal', cassava:'root', legume:'legume', vegetable:'vegetable', sorghum:'cereal'};
 
@@ -102,8 +102,8 @@ function buildHistoryRows(dates, moistSeries, precipSeries) {
   return rows.map(r => `
     <tr>
       <td>${r.date}</td>
-      <td>${r.moist !== null ? (r.moist*100).toFixed(0)+'%' : '�'}</td>
-      <td>${r.precip !== null ? r.precip.toFixed(1)+'mm' : '�'}</td>
+      <td>${r.moist !== null ? (r.moist*100).toFixed(0)+'%' : '—'}</td>
+      <td>${r.precip !== null ? r.precip.toFixed(1)+'mm' : '—'}</td>
     </tr>
   `).join('');
 }
@@ -166,7 +166,7 @@ function buildActions(risks, lastFamily) {
   }
   if (risks.heatStress) actions.push('Plant early morning or late evening to protect young plants from heat.');
   if (lastFamily === 'cereal') actions.push('Plant beans or groundnut to feed the soil before your next maize/rice crop.');
-  actions.push('Check this app again in 1-2 weeks � the data updates daily.');
+  actions.push('Check this app again in 1-2 weeks — the data updates daily.');
   return actions;
 }
 
@@ -181,6 +181,10 @@ function latLonToTile(lat, lon, zoom) {
   const x = Math.floor((lon + 180) / 360 * n);
   const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
   return { x, y, z: zoom };
+}
+
+function getGibsTileTemplate(dateStr = '2026-10-15') {
+  return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
 }
 
 function gibsTileUrl(lat, lon, zoom = 7, dateStr) {
