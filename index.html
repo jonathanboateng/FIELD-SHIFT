@@ -10,24 +10,28 @@
   <div class="container" style="max-width: 600px; margin: 40px auto; padding: 20px;">
     <header style="text-align: center; margin-bottom: 30px;">
       <h1 style="margin: 0 0 10px; font-size: 2rem;">🌾 AgriNexus</h1>
-      <p class="muted">High-resolution agricultural intelligence & satellite monitoring for Sunyani, Ghana</p>
+      <p class="muted">Smart agricultural intelligence & environmental monitoring</p>
     </header>
 
     <div class="card" style="background: var(--panel); border: 1px solid rgba(126, 217, 87, 0.2); border-radius: 16px; padding: 24px;">
       
-      <!-- Step 1 -->
+      <!-- Step 1: Field Coordinates & Live Location -->
       <div style="margin-bottom: 24px;">
-        <label style="display:block; margin-bottom: 10px; font-weight: 600; color: var(--text);">
-          <span style="background: var(--accent); color: #000; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; margin-right: 6px;">1</span> 
-          Where is your field?
-        </label>
-        <button id="useLocationBtn" class="btn" style="width: 100%; padding: 12px; background: var(--panel2); border: 2px solid var(--accent); border-radius: 10px; color: var(--text); font-weight: 600; cursor: pointer; margin-bottom: 12px;">
-          📍 Use My Location (easiest)
-        </button>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+          <label style="font-weight: 600; color: var(--text);">
+            <span style="background: var(--accent); color: #000; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; margin-right: 6px;">1</span> 
+            Where is your field?
+          </label>
+          <span id="locStatus" style="font-size: 0.75rem; color: var(--accent);">📍 Auto-detecting live location...</span>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
           <input type="text" id="latInput" placeholder="Latitude (e.g. 7.34)" style="padding: 10px; background: var(--panel2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text); outline: none;">
           <input type="text" id="lonInput" placeholder="Longitude (e.g. -2.33)" style="padding: 10px; background: var(--panel2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text); outline: none;">
         </div>
+        <button id="useLocationBtn" class="btn" style="width: 100%; padding: 10px; background: var(--panel2); border: 1px solid var(--accent); border-radius: 8px; color: var(--accent); font-weight: 600; cursor: pointer; font-size: 0.85rem;">
+          🔄 Refresh Live GPS Location
+        </button>
       </div>
 
       <!-- Step 2 -->
@@ -50,7 +54,7 @@
       </div>
 
       <!-- Step 4: Search & Toggle Crop Preview -->
-      <div style="margin-bottom: 24px; border-top: 1px solid rgba(255,255,255,0.1); paddingTop: 20px;">
+      <div style="margin-bottom: 24px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
           <label style="font-weight: 600; color: var(--text);">
             <span style="background: var(--accent); color: #000; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; margin-right: 6px;">4</span> 
@@ -67,7 +71,7 @@
       <!-- Step 3: Check My Field Button -->
       <div>
         <button id="submitBtn" class="btn" style="width: 100%; padding: 14px; background: var(--accent); color: #000; border: none; border-radius: 10px; font-weight: 700; font-size: 1rem; cursor: pointer;">
-          3 🚀 Check My Field & Intelligence
+          3 🚀 Check My Field & 30-Day History
         </button>
       </div>
 
@@ -109,8 +113,28 @@
       `).join('');
     }
 
+    function fetchLiveLocation() {
+      const statusEl = document.getElementById('locStatus');
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          document.getElementById('latInput').value = pos.coords.latitude.toFixed(4);
+          document.getElementById('lonInput').value = pos.coords.longitude.toFixed(4);
+          statusEl.textContent = `🟢 Live GPS Active (${pos.coords.latitude.toFixed(2)}°, ${pos.coords.longitude.toFixed(2)}°)`;
+        }, err => {
+          statusEl.textContent = '⚠️ Location access denied. Using default Sunyani coordinates.';
+          document.getElementById('latInput').value = '7.3399';
+          document.getElementById('lonInput').value = '-2.3268';
+        }, { timeout: 10000 });
+      } else {
+        statusEl.textContent = '⚠️ Geolocation not supported.';
+        document.getElementById('latInput').value = '7.3399';
+        document.getElementById('lonInput').value = '-2.3268';
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       renderHomeCrops();
+      fetchLiveLocation();
 
       const searchInput = document.getElementById('homeCropSearch');
       const toggleBtn = document.getElementById('toggleHomeCrops');
@@ -127,33 +151,22 @@
         });
       }
 
-      // Location button handler
-      document.getElementById('useLocationBtn').addEventListener('click', () => {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(pos => {
-            document.getElementById('latInput').value = pos.coords.latitude.toFixed(4);
-            document.getElementById('lonInput').value = pos.coords.longitude.toFixed(4);
-          }, err => alert('Unable to retrieve your location. Please type coordinates manually.'));
-        } else {
-          alert('Geolocation is not supported by your browser.');
-        }
-      });
+      document.getElementById('useLocationBtn').addEventListener('click', fetchLiveLocation);
 
-      // Submit button handler
       document.getElementById('submitBtn').addEventListener('click', () => {
         const lat = parseFloat(document.getElementById('latInput').value) || 7.3399;
         const lon = parseFloat(document.getElementById('lonInput').value) || -2.3268;
         const lastCrop = document.getElementById('lastCropSelect').value;
 
         const fieldData = {
-          name: 'My Farm Field (Sunyani)',
+          name: 'My Live Field',
           lat: lat,
           lon: lon,
           lastCrop: lastCrop
         };
 
         localStorage.setItem('agrinexus_active_field', JSON.stringify(fieldData));
-        window.location.href = `dashboard.html?lat=${lat}&lon=${lon}&lastCrop=${lastCrop}&name=My+Farm+Field`;
+        window.location.href = `dashboard.html?lat=${lat}&lon=${lon}&lastCrop=${lastCrop}&name=My+Live+Field`;
       });
     });
   </script>
