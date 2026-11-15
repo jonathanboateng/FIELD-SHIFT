@@ -1,92 +1,161 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Agri Nexus — Know Your Field</title>
-<link rel="stylesheet" href="style.css">
-<style>
-  .hero{text-align:center; padding:34px 16px 16px;}
-  .hero h1{margin:0; font-size:2rem;}
-  .hero h1 span{color:var(--accent);}
-  .hero p{color:var(--muted); margin:8px 0 0; font-size:1.05rem;}
-  .pitch{display:flex; flex-direction:column; gap:10px; margin:18px 0 6px;}
-  .pitch-item{display:flex; gap:12px; align-items:center; background:var(--panel2); border-radius:12px; padding:12px 14px;}
-  .pitch-item .emoji{font-size:1.6rem;}
-  .pitch-item p{margin:0; font-size:0.95rem;}
-  .field{margin-bottom:12px;}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgriNexus - Field Setup</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="hero">
-  <h1>🌾 Agri<span>Nexus</span></h1>
-  <p>Know your field. Plant smarter.</p>
-</div>
+  <div class="container" style="max-width: 600px; margin: 40px auto; padding: 20px;">
+    <header style="text-align: center; margin-bottom: 30px;">
+      <h1 style="margin: 0 0 10px; font-size: 2rem;">🌾 AgriNexus</h1>
+      <p class="muted">High-resolution agricultural intelligence & satellite monitoring for Sunyani, Ghana</p>
+    </header>
 
-<div class="wrap">
-
-  <div class="pitch">
-    <div class="pitch-item"><span class="emoji">🛰️</span><p>Checks your soil moisture using NASA satellites — no sensors needed.</p></div>
-    <div class="pitch-item"><span class="emoji">🌱</span><p>Tells you what to plant next, based on your real field conditions.</p></div>
-    <div class="pitch-item"><span class="emoji">📱</span><p>Free, works on your phone, no account needed.</p></div>
-  </div>
-
-  <div class="card">
-    <div class="field">
-      <label><span class="step-num">1</span>Where is your field?</label>
-      <button id="useLoc" class="secondary">📍 Use My Location (easiest)</button>
-    </div>
-    <div class="field">
-      <label>Or type coordinates</label>
-      <div style="display:flex; gap:8px;">
-        <input type="number" id="lat" step="0.0001" placeholder="Latitude">
-        <input type="number" id="lon" step="0.0001" placeholder="Longitude">
+    <div class="card" style="background: var(--panel); border: 1px solid rgba(126, 217, 87, 0.2); border-radius: 16px; padding: 24px;">
+      
+      <!-- Step 1 -->
+      <div style="margin-bottom: 24px;">
+        <label style="display:block; margin-bottom: 10px; font-weight: 600; color: var(--text);">
+          <span style="background: var(--accent); color: #000; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; margin-right: 6px;">1</span> 
+          Where is your field?
+        </label>
+        <button id="useLocationBtn" class="btn" style="width: 100%; padding: 12px; background: var(--panel2); border: 2px solid var(--accent); border-radius: 10px; color: var(--text); font-weight: 600; cursor: pointer; margin-bottom: 12px;">
+          📍 Use My Location (easiest)
+        </button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <input type="text" id="latInput" placeholder="Latitude (e.g. 7.34)" style="padding: 10px; background: var(--panel2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text); outline: none;">
+          <input type="text" id="lonInput" placeholder="Longitude (e.g. -2.33)" style="padding: 10px; background: var(--panel2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text); outline: none;">
+        </div>
       </div>
+
+      <!-- Step 2 -->
+      <div style="margin-bottom: 24px;">
+        <label style="display:block; margin-bottom: 10px; font-weight: 600; color: var(--text);">
+          <span style="background: var(--accent); color: #000; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; margin-right: 6px;">2</span> 
+          What did you grow last season?
+        </label>
+        <select id="lastCropSelect" style="width: 100%; padding: 12px; background: var(--panel2); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--text); outline: none; cursor: pointer;">
+          <option value="none">Nothing / First time planting</option>
+          <option value="maize">Maize (Cereal)</option>
+          <option value="cassava">Cassava (Root)</option>
+          <option value="tomato">Tomato (Solanaceous)</option>
+          <option value="cowpea">Cowpea (Legume)</option>
+          <option value="yam">Yam (Root)</option>
+          <option value="pepper">Hot Pepper (Solanaceous)</option>
+          <option value="plantain">Plantain (Fruit)</option>
+          <option value="groundnut">Groundnut (Legume)</option>
+        </select>
+      </div>
+
+      <!-- Step 4: Search & Toggle Crop Preview -->
+      <div style="margin-bottom: 24px; border-top: 1px solid rgba(255,255,255,0.1); paddingTop: 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <label style="font-weight: 600; color: var(--text);">
+            <span style="background: var(--accent); color: #000; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; margin-right: 6px;">4</span> 
+            Explore Crop Database & Search
+          </label>
+          <button id="toggleHomeCrops" type="button" style="padding: 4px 10px; background: var(--panel2); border: 1px solid var(--accent); color: var(--accent); border-radius: 6px; cursor: pointer; font-size: 0.75rem;">
+            Show All
+          </button>
+        </div>
+        <input type="text" id="homeCropSearch" placeholder="🔍 Search any crop to preview..." style="width: 100%; box-sizing: border-box; padding: 10px 14px; background: var(--panel2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text); outline: none; margin-bottom: 10px;">
+        <div id="homeCropList" style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;"></div>
+      </div>
+
+      <!-- Step 3: Check My Field Button -->
+      <div>
+        <button id="submitBtn" class="btn" style="width: 100%; padding: 14px; background: var(--accent); color: #000; border: none; border-radius: 10px; font-weight: 700; font-size: 1rem; cursor: pointer;">
+          3 🚀 Check My Field & Intelligence
+        </button>
+      </div>
+
     </div>
-    <div class="field">
-      <label><span class="step-num">2</span>What did you grow last season?</label>
-      <select id="lastCrop">
-        <option value="none">Nothing / first time planting</option>
-        <option value="maize">Maize (corn)</option>
-        <option value="rice">Rice</option>
-        <option value="cassava">Cassava</option>
-        <option value="legume">Beans / Groundnut / Cowpea</option>
-        <option value="vegetable">Tomato / Pepper / Okra</option>
-        <option value="sorghum">Sorghum / Millet</option>
-      </select>
-    </div>
-    <button id="go"><span class="step-num">3</span>Check My Field</button>
-    <div id="status" class="muted" style="text-align:center; min-height:20px; padding-top:8px;"></div>
   </div>
 
-</div>
+  <script>
+    const DEMO_CROPS = {
+      maize: { name: 'Maize (Corn)', emoji: '🌽', family: 'cereal', note: 'Staple cereal; moderate water needed.' },
+      cassava: { name: 'Cassava', emoji: '🥔', family: 'root', note: 'Drought-resistant root crop.' },
+      tomato: { name: 'Tomato', emoji: '🍅', family: 'solanaceous', note: 'High water requirement.' },
+      cowpea: { name: 'Cowpea (Bean)', emoji: '🌱', family: 'legume', note: 'Nitrogen-fixing legume.' },
+      yam: { name: 'Yam', emoji: '🍠', family: 'root', note: 'Requires well-drained soil.' },
+      pepper: { name: 'Hot Pepper', emoji: '🌶️', family: 'solanaceous', note: 'Good cash crop.' },
+      plantain: { name: 'Plantain', emoji: '🍌', family: 'fruit', note: 'Requires high moisture.' },
+      groundnut: { name: 'Groundnut', emoji: '🥜', family: 'legume', note: 'Grows well in sandy-loam.' }
+    };
 
-<footer>Data from NASA POWER &amp; NASA Open APIs (api.nasa.gov) — Built for NASA Space Apps Challenge 2026, "Field Shift: Adapting Farms with NASA Data"</footer>
+    let showAllHomeCrops = false;
 
-<script>
-const statusEl = document.getElementById('status');
+    function renderHomeCrops(query = '') {
+      const q = query.toLowerCase().trim();
+      const entries = Object.entries(DEMO_CROPS).filter(([k, c]) => 
+        q.length > 0 || showAllHomeCrops ? (c.name.toLowerCase().includes(q) || c.family.toLowerCase().includes(q)) : false
+      );
 
-document.getElementById('useLoc').onclick = () => {
-  if (!navigator.geolocation) { statusEl.textContent = 'Location not available — type it in below.'; return; }
-  statusEl.textContent = 'Finding your field…';
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      document.getElementById('lat').value = pos.coords.latitude.toFixed(4);
-      document.getElementById('lon').value = pos.coords.longitude.toFixed(4);
-      statusEl.textContent = '✓ Got it. Now tap "Check My Field".';
-    },
-    () => { statusEl.textContent = 'Could not get location — type coordinates above.'; }
-  );
-};
+      const container = document.getElementById('homeCropList');
+      if (entries.length === 0) {
+        container.innerHTML = `<p class="muted" style="font-size:0.8rem; text-align:center; margin:5px 0;">Type to search or click "Show All" to preview crops.</p>`;
+        return;
+      }
 
-document.getElementById('go').onclick = () => {
-  const lat = parseFloat(document.getElementById('lat').value);
-  const lon = parseFloat(document.getElementById('lon').value);
-  if (isNaN(lat) || isNaN(lon)) { statusEl.textContent = 'Please set your location first.'; return; }
-  const lastCrop = document.getElementById('lastCrop').value;
-  localStorage.setItem('agrinexus_field', JSON.stringify({lat, lon, lastCrop}));
-  window.location.href = 'dashboard.html';
-};
-</script>
+      container.innerHTML = entries.map(([k, c]) => `
+        <div style="display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--panel2); border-radius:6px; font-size:0.85rem;">
+          <span>${c.emoji}</span>
+          <strong style="color:var(--text);">${c.name}</strong>
+          <span class="muted" style="margin-left:auto; font-size:0.75rem;">${c.note}</span>
+        </div>
+      `).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderHomeCrops();
+
+      const searchInput = document.getElementById('homeCropSearch');
+      const toggleBtn = document.getElementById('toggleHomeCrops');
+
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => renderHomeCrops(e.target.value));
+      }
+
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+          showAllHomeCrops = !showAllHomeCrops;
+          toggleBtn.textContent = showAllHomeCrops ? 'Hide' : 'Show All';
+          renderHomeCrops(searchInput ? searchInput.value : '');
+        });
+      }
+
+      // Location button handler
+      document.getElementById('useLocationBtn').addEventListener('click', () => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(pos => {
+            document.getElementById('latInput').value = pos.coords.latitude.toFixed(4);
+            document.getElementById('lonInput').value = pos.coords.longitude.toFixed(4);
+          }, err => alert('Unable to retrieve your location. Please type coordinates manually.'));
+        } else {
+          alert('Geolocation is not supported by your browser.');
+        }
+      });
+
+      // Submit button handler
+      document.getElementById('submitBtn').addEventListener('click', () => {
+        const lat = parseFloat(document.getElementById('latInput').value) || 7.3399;
+        const lon = parseFloat(document.getElementById('lonInput').value) || -2.3268;
+        const lastCrop = document.getElementById('lastCropSelect').value;
+
+        const fieldData = {
+          name: 'My Farm Field (Sunyani)',
+          lat: lat,
+          lon: lon,
+          lastCrop: lastCrop
+        };
+
+        localStorage.setItem('agrinexus_active_field', JSON.stringify(fieldData));
+        window.location.href = `dashboard.html?lat=${lat}&lon=${lon}&lastCrop=${lastCrop}&name=My+Farm+Field`;
+      });
+    });
+  </script>
 </body>
 </html>
